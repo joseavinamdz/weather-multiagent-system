@@ -1,4 +1,4 @@
-package Agents;
+package wms.agents;
 
 import jade.core.Agent;
 
@@ -24,18 +24,19 @@ import org.json.*;
  */
 
 public class WeatherParser extends Agent {
-    protected void setup()
-    {
-        MessageTemplate plantilla = AchieveREResponder.createMessageTemplate(FIPANames.InteractionProtocol.FIPA_QUERY);
-        this.addBehaviour(new Parser(this, plantilla));
+    protected void setup() {
+        /* Añadimos el comportamiento para la recepción de mensajes */
+        MessageTemplate template = AchieveREResponder.createMessageTemplate(
+                FIPANames.InteractionProtocol.FIPA_QUERY);
+        this.addBehaviour(new Parser(this, template));
     }
 
     private class Parser extends AchieveREResponder {
         private String msg;
         private JSONObject req;
 
-        public Parser(Agent agente, MessageTemplate plantilla) {
-            super(agente, plantilla);
+        public Parser(Agent a, MessageTemplate template) {
+            super(a, template);
         }
 
         protected ACLMessage handleRequest(ACLMessage request) throws RefuseException {
@@ -43,12 +44,14 @@ public class WeatherParser extends Agent {
             req = new JSONObject(request.getContent());
             WebDriver driver = new HtmlUnitDriver();
 
+            /* Buscamos el tiempo en Internet */
             driver.get("http://www.google.es/");
 
             WebElement search = driver.findElement(By.name("q"));
             search.sendKeys(req.getString("message") + " weather");
             search.submit();
 
+            /* Parseamos los datos recibidos y nos quedamos con lo que buscamos */
             Document doc = Jsoup.parse(driver.getPageSource());
             Elements temp = doc.select("span[class=wob_t]");
             Elements desc = doc.select("img[class=_Lbd]");
@@ -56,10 +59,13 @@ public class WeatherParser extends Agent {
 
             driver.close();
 
+            /* Si hemos conseguido lo que buscabamos */
             if(temp.size() > 0) {
+                /* Creamos el mensaje de aceptación para su envío */
                 ACLMessage agree = request.createReply();
                 agree.setPerformative(ACLMessage.AGREE);
 
+                /* Preparamos el mensaje que se enviará en el informe */
                 msg = "\n" + desc.get(0).attr("alt") + "\n"
                         + "Temperatura: " + temp.get(0).text() + "\n"
                         + "Viento: " + temp.get(1).text() + "\n"
@@ -67,6 +73,7 @@ public class WeatherParser extends Agent {
 
                 return agree;
             } else {
+                /* Si no hemos encontrado el tiempo buscado, se lanza una excepción */
                 throw new RefuseException("No se ha encontrado el tiempo buscado.");
             }
         }
@@ -74,7 +81,15 @@ public class WeatherParser extends Agent {
         protected ACLMessage prepareResultNotification(ACLMessage request, ACLMessage response) {
             ACLMessage inform = request.createReply();
             inform.setPerformative(ACLMessage.INFORM);
-            inform.setContent("@" + req.getString("userID") + "\n" + msg);
+
+            /* Si estamos respondiendo un mensaje sin usuario, enviamos solo el tiempo */
+            if(req.getString("userID").equals("null"))
+            {
+                inform.setContent("[" + req.getString("message") + "]" + "\n" + msg);
+            } else {
+                /* En caso contrario, enviamos el usuario junto con el tiempo solicitado */
+                inform.setContent("@" + req.getString("userID") + "\n" + msg);
+            }
 
             return inform;
         }

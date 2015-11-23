@@ -1,8 +1,9 @@
-package Agents;
+package wms.agents;
 
 import jade.core.Agent;
 import jade.core.behaviours.OneShotBehaviour;
 
+import jade.core.behaviours.TickerBehaviour;
 import twitter4j.*;
 
 import twitter4j.conf.Configuration;
@@ -29,8 +30,7 @@ public class TwitterListener extends Agent {
     TwitterStream twitterStream;
     ThreadedBehaviourFactory tbf;
 
-    protected void setup()
-    {
+    protected void setup() {
         this.tbf = new ThreadedBehaviourFactory();
          /* Creamos nuestra propia configuración */
         ConfigurationBuilder builder = new ConfigurationBuilder();
@@ -47,6 +47,8 @@ public class TwitterListener extends Agent {
 
         /* Dejamos la ejecucion del listener en un hilo dedicado */
         this.addBehaviour(tbf.wrap(new Listener(this)));
+        /* Dejamos la ejecución de la consulta cíclica (cada 5 min) en otro hilo dedicado */
+        this.addBehaviour(tbf.wrap(new WakeCity(this, 300000)));
     }
 
     protected void takeDown()
@@ -155,7 +157,7 @@ public class TwitterListener extends Agent {
         public void onQuotedTweet(User user, User user1, Status status) {}
 
         public void onStatus(Status status) {
-            if (status.getText().contains("@WSMultiagent")) {
+            if (!status.isRetweet() && status.getText().contains("@WSMultiagent")) {
                 /* Mandamos mensaje a MessageParser */
                 ACLMessage msg = new ACLMessage(ACLMessage.QUERY_IF);
                 msg.setProtocol(FIPANames.InteractionProtocol.FIPA_QUERY);
@@ -190,6 +192,25 @@ public class TwitterListener extends Agent {
         }
     }
 
+    private class WakeCity extends TickerBehaviour {
+        public WakeCity(Agent a, long p) {
+            super(a, p);
+        }
+
+        public void onTick() {
+            /* Mandamos mensaje a CitiesWeather */
+            ACLMessage msg = new ACLMessage(ACLMessage.QUERY_IF);
+            msg.setProtocol(FIPANames.InteractionProtocol.FIPA_QUERY);
+
+            AID id = new AID();
+            id.setLocalName("CitiesWeather");
+            msg.addReceiver(id);
+            msg.setSender(this.myAgent.getAID());
+
+            this.myAgent.addBehaviour(new MsgInitiator(this.myAgent, msg));
+        }
+    }
+
     private class MsgInitiator extends AchieveREInitiator
     {
         public MsgInitiator(Agent a, ACLMessage msg) {
@@ -197,11 +218,7 @@ public class TwitterListener extends Agent {
         }
 
         protected void handleRefuse(ACLMessage refuse) {
-            try {
-                twitter.updateStatus(refuse.getContent());
-            } catch (TwitterException e) {
-                e.printStackTrace();
-            }
+            System.out.println(refuse.getContent());
         }
 
         protected void handleInform(ACLMessage inform)
