@@ -21,10 +21,10 @@ import jade.core.behaviours.ThreadedBehaviourFactory;
 
 public class TwitterListener extends Agent {
     /* Keys para el acceso a la aplicacion creada en TwitterDev */
-    private final static String CONSUMER_KEY = "muqptBW38fWY9ZP4Rv7aC9ZjZ";
-    private final static String CONSUMER_KEY_SECRET = "pNFk1XLS2Ic54On58INBkHvk3CLjAnHY5bjuxUnyQV72RDEsEd";
-    private final static String ACCESS_TOKEN = "4100187910-glyimmCzTKE5kuItqw3av4pk7jkjA3x8lMcSpc3";
-    private final static String ACCESS_TOKEN_SECRET = "3sYNqqpa5S1j7JymolVz0jfVBfR7qtlhFCz8SMsvDN1dP";
+    private final static String CONSUMER_KEY = "XXXXXXX";
+    private final static String CONSUMER_KEY_SECRET = "XXXXXXX";
+    private final static String ACCESS_TOKEN = "XXXXXXX";
+    private final static String ACCESS_TOKEN_SECRET = "XXXXXXX";
 
     Twitter twitter;
     TwitterStream twitterStream;
